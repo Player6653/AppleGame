@@ -5,12 +5,10 @@ namespace APPLE_GAME
 {
 	void InitPlayer(Player& player, const Game& game)
 	{
-		// Инициализация игрока
 		player.Position = { SCREEN_WIDTH / 2.f, SCREEN_HEIGHT / 2.f };
 		player.Speed = INITIAL_SPEED;
 		player.Direction = PlayerDirection::Zero;
 
-		// Инициализация спрайта
 		player.sprite.setTexture(game.playertexture);
 		SetSpriteSize(player.sprite, PLAYER_SIZE, PLAYER_SIZE);
 		SetSpriteRelativeOrigine(player.sprite, 0.5f, 0.5f);

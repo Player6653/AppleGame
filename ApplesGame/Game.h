@@ -12,37 +12,43 @@ namespace APPLE_GAME
 	struct Game
 	{
 		Player player;
-		Apple apples[NUM_APPLES];
+		Apple* apples = nullptr;
+		int numApples = 0;
+		unsigned int gameMode = 0;
 		Rock rocks[NUM_ROCKS];
 
-		// Глобальные сведения игры
 		int numEatenApples = 0;
 		bool isGameFinished = false;
+		bool isGameWon = false;
+		bool isSelectingMode = true;
 		float gameFinishTime = 0.f;
+		float hintStartTime = 0.f;
 		sf::RectangleShape background;
 
-		// Ресурсы
 		sf::Texture playertexture;
 		sf::Texture appletexture;
 		sf::Texture rocktexture;
 
-		// Саунд
 		sf::SoundBuffer eatAppleSoundBuffer;
 		sf::SoundBuffer deathSoundBuffer;
 		sf::Sound eatAppleSound;
 		sf::Sound deathSound;
 
-		// интерфейс 
 		sf::Font font;
 		sf::Text scoreText;
 		sf::Text hintText;
 		sf::Text gameOverText;
+		sf::Text gameWonText;
+		sf::Text modeSelectText;
 
-		bool isHintVisible = true; // таймер управления
+		bool isHintVisible = true;
 	};
 
 	void RestartGame(Game& game);
 	void InitGame(Game& game);
+	void StartGame(Game& game, float currentTime);
+	void ReturnToModeSelect(Game& game);
+	bool HandleModeSelectInput(Game& game, sf::Keyboard::Key key);
 	bool CheckCollisionApple(const Player& player, const Apple& apple);
 	bool CheckCollisionRock(const Player& player, const Rock& rock);
 	bool CheckPlayerScreenCollision(const Player& player);

@@ -1,15 +1,19 @@
-﻿#include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-#include <string>
-#include <iostream>
 #include "Constants.h"
 #include "Game.h"
 
 int main()
 {
 	using namespace APPLE_GAME;
+
 	int seed = (int)time(nullptr);
 	srand(seed);
+
+	Game game;
+	game.numApples = 20;
+	game.gameMode = GAME_MODE_INFINITE_APPLES | GAME_MODE_WITH_ACCELERATION;
+
 	// Инициализация окна
 	sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "Apple Game");
 
@@ -17,7 +21,6 @@ int main()
 	sf::Clock gameClock;
 	float lastTime = gameClock.getElapsedTime().asSeconds();
 
-	Game game;
 	InitGame(game);
 
 	// Главный цикл
@@ -45,14 +48,33 @@ int main()
 				window.close();
 				break;
 			}
-			if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R)
+
+			if (game.isSelectingMode)
 			{
-				game.isGameFinished = true;
-				game.gameFinishTime = currentTime;
+				if (event.type == sf::Event::KeyPressed)
+				{
+					if (HandleModeSelectInput(game, event.key.code))
+					{
+						StartGame(game, currentTime);
+						lastTime = gameClock.getElapsedTime().asSeconds();
+					}
+				}
+			}
+			else
+			{
+				if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R)
+				{
+					game.isGameFinished = true;
+					game.gameFinishTime = currentTime;
+				}
+				if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P)
+				{
+					ReturnToModeSelect(game);
+				}
 			}
 		}
 
-		if (!game.isGameFinished)
+		if (!game.isSelectingMode && !game.isGameFinished)
 		{
 			// Обработка нажатий
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D))
@@ -72,7 +94,12 @@ int main()
 				game.player.Direction = PlayerDirection::Down;
 			}
 		}
-		UpdateGame(game, deltaTime, currentTime);
+
+		if (!game.isSelectingMode)
+		{
+			UpdateGame(game, deltaTime, currentTime);
+		}
+
 		window.clear();
 		DrawGame(game, window);
 		window.display();

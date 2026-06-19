@@ -1,16 +1,31 @@
-#include "Game.h"
+п»ї#include "Game.h"
 #include <cassert>
+#include <string>
 
 namespace APPLE_GAME
 {
+	static void RebuildModeSelectText(Game& game)
+	{
+		std::wstring text = L"=== Р’Р«Р‘РћР  Р Р•Р–РРњРђ ===\n\n";
+		text += L"[1]  РЇР±Р»РѕРєРё: ";
+		text += (game.gameMode & GAME_MODE_INFINITE_APPLES) ? L"Р‘Р•РЎРљРћРќР•Р§РќР«Р•" : L"РљРћРќР•Р§РќР«Р•";
+		text += L"\n[2]  РЈСЃРєРѕСЂРµРЅРёРµ: ";
+		text += (game.gameMode & GAME_MODE_WITH_ACCELERATION) ? L"Р’РљР›" : L"Р’Р«РљР›";
+		text += L"\n[РІРІРµСЂС… / РІРЅРёР·]  РљРѕР»РёС‡РµСЃС‚РІРѕ СЏР±Р»РѕРє: ";
+		text += std::to_wstring(game.numApples);
+		text += L"\n\n[Enter]  РќР°С‡Р°С‚СЊ РёРіСЂСѓ";
+		game.modeSelectText.setString(text);
+	}
+
 	void RestartGame(Game& game)
 	{
 		InitPlayer(game.player, game);
-		game.scoreText.setString(L"Счет: 0");
+		game.scoreText.setString(L"РЎС‡РµС‚: 0");
 
-		for (int i = 0; i < NUM_APPLES; ++i)
+		for (int i = 0; i < game.numApples; ++i)
 		{
 			InitApples(game.apples[i], game);
+			game.apples[i].isEaten = false;
 		}
 
 		for (int i = 0; i < NUM_ROCKS; ++i)
@@ -20,6 +35,7 @@ namespace APPLE_GAME
 
 		game.numEatenApples = 0;
 		game.isGameFinished = false;
+		game.isGameWon = false;
 		game.gameFinishTime = 0.f;
 
 		game.background.setFillColor(sf::Color::Black);
@@ -27,19 +43,18 @@ namespace APPLE_GAME
 
 	void InitGame(Game& game)
 	{
-		// Спрайты
 		assert(game.playertexture.loadFromFile(RESOURCES_PATH + "Pictures/Player.png"));
 		assert(game.appletexture.loadFromFile(RESOURCES_PATH + "Pictures/Apple.png"));
 		assert(game.rocktexture.loadFromFile(RESOURCES_PATH + "Pictures/Rock.png"));
-		
-		// Звуки
+
+		game.apples = new Apple[game.numApples];
+
 		assert(game.eatAppleSoundBuffer.loadFromFile(RESOURCES_PATH + "Sound/AppleEat.wav"));
 		assert(game.deathSoundBuffer.loadFromFile(RESOURCES_PATH + "Sound/Death.wav"));
 
 		game.eatAppleSound.setBuffer(game.eatAppleSoundBuffer);
 		game.deathSound.setBuffer(game.deathSoundBuffer);
 
-		// Интерфейс
 		assert(game.font.loadFromFile(RESOURCES_PATH + "Fonts/Roboto-Black.ttf"));
 
 		game.scoreText.setFont(game.font);
@@ -50,24 +65,84 @@ namespace APPLE_GAME
 		game.hintText.setFont(game.font);
 		game.hintText.setCharacterSize(22);
 		game.hintText.setFillColor(sf::Color::White);
-		game.hintText.setString(L"Управление: \nСтрелочки/WASD \nR – Перезагрузка \nESC – Выход");
+		game.hintText.setString(L"РЈРїСЂР°РІР»РµРЅРёРµ: \nРЎС‚СЂРµР»РѕС‡РєРё/WASD \nR вЂ“ РџРµСЂРµР·Р°РіСЂСѓР·РєР° \nP вЂ“ Р’С‹Р±РѕСЂ СЂРµР¶РёРјР° \nESC вЂ“ Р’С‹С…РѕРґ");
 		game.hintText.setPosition(10.f, 40.f);
 
 		game.gameOverText.setFont(game.font);
 		game.gameOverText.setCharacterSize(72);
 		game.gameOverText.setFillColor(sf::Color::White);
 		game.gameOverText.setStyle(sf::Text::Bold);
-		game.gameOverText.setString(L"Потрачено");
+		game.gameOverText.setString(L"РџРѕС‚СЂР°С‡РµРЅРѕ");
 
 		sf::FloatRect textRect = game.gameOverText.getLocalBounds();
 		game.gameOverText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
 		game.gameOverText.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
-		
+
+		game.gameWonText.setFont(game.font);
+		game.gameWonText.setCharacterSize(72);
+		game.gameWonText.setFillColor(sf::Color::White);
+		game.gameWonText.setStyle(sf::Text::Bold);
+		game.gameWonText.setString(L"РџРѕР±РµРґР°!");
+
+		sf::FloatRect wonTextRect = game.gameWonText.getLocalBounds();
+		game.gameWonText.setOrigin(wonTextRect.left + wonTextRect.width / 2.0f, wonTextRect.top + wonTextRect.height / 2.0f);
+		game.gameWonText.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		game.modeSelectText.setFont(game.font);
+		game.modeSelectText.setCharacterSize(28);
+		game.modeSelectText.setFillColor(sf::Color::White);
+		game.modeSelectText.setPosition(40.f, 140.f);
+		RebuildModeSelectText(game);
+
 		game.background.setSize(sf::Vector2f(SCREEN_WIDTH, SCREEN_HEIGHT));
 		game.background.setFillColor(sf::Color::Black);
 		game.background.setPosition(0.f, 0.f);
 
 		RestartGame(game);
+	}
+
+	void StartGame(Game& game, float currentTime)
+	{
+		delete[] game.apples;
+		game.apples = new Apple[game.numApples];
+		game.isSelectingMode = false;
+		game.hintStartTime = currentTime;
+		game.isHintVisible = true;
+		RestartGame(game);
+	}
+
+	void ReturnToModeSelect(Game& game)
+	{
+		game.isSelectingMode = true;
+		game.isGameFinished = false;
+		game.isGameWon = false;
+		game.background.setFillColor(sf::Color::Black);
+	}
+
+	bool HandleModeSelectInput(Game& game, sf::Keyboard::Key key)
+	{
+		switch (key)
+		{
+		case sf::Keyboard::Num1:
+			game.gameMode ^= GAME_MODE_INFINITE_APPLES;
+			RebuildModeSelectText(game);
+			break;
+		case sf::Keyboard::Num2:
+			game.gameMode ^= GAME_MODE_WITH_ACCELERATION;
+			RebuildModeSelectText(game);
+			break;
+		case sf::Keyboard::Up:
+			if (game.numApples < 100) game.numApples += 5;
+			RebuildModeSelectText(game);
+			break;
+		case sf::Keyboard::Down:
+			if (game.numApples > 5) game.numApples -= 5;
+			RebuildModeSelectText(game);
+			break;
+		case sf::Keyboard::Return:
+			return true;
+		}
+		return false;
 	}
 
 	bool CheckCollisionApple(const Player& player, const Apple& apple)
@@ -90,19 +165,27 @@ namespace APPLE_GAME
 	{
 		UpdatePlayer(game.player, deltaTime);
 
-		// Проверка колизий яболк
-		for (int i = 0; i < NUM_APPLES; ++i)
+		for (int i = 0; i < game.numApples; ++i)
 		{
-			if (CheckCollisionApple(game.player, game.apples[i]))
+			if (!game.apples[i].isEaten && CheckCollisionApple(game.player, game.apples[i]))
 			{
-				InitApples(game.apples[i], game);
+				if (game.gameMode & GAME_MODE_INFINITE_APPLES)
+				{
+					InitApples(game.apples[i], game);
+				}
+				else
+				{
+					game.apples[i].isEaten = true;
+				}
 				++game.numEatenApples;
 				game.eatAppleSound.play();
-				game.player.Speed += ACCELERATION;
+				if (game.gameMode & GAME_MODE_WITH_ACCELERATION)
+				{
+					game.player.Speed += ACCELERATION;
+				}
 			}
 		}
 
-		// Проверка колизий камней
 		for (int i = 0; i < NUM_ROCKS; ++i)
 		{
 			if (CheckCollisionRock(game.player, game.rocks[i]))
@@ -110,18 +193,25 @@ namespace APPLE_GAME
 				game.deathSound.play();
 				game.isGameFinished = true;
 				game.gameFinishTime = currentTime;
+				break;
 			}
 		}
 
-		// Проверка колизий границ экрана
-		if (CheckPlayerScreenCollision(game.player))
+		if (!game.isGameFinished && CheckPlayerScreenCollision(game.player))
 		{
 			game.deathSound.play();
 			game.isGameFinished = true;
 			game.gameFinishTime = currentTime;
 		}
 
-		if (currentTime > 5.f)
+		if (!game.isGameFinished && !(game.gameMode & GAME_MODE_INFINITE_APPLES) && game.numEatenApples >= game.numApples)
+		{
+			game.isGameFinished = true;
+			game.isGameWon = true;
+			game.gameFinishTime = currentTime;
+		}
+
+		if (currentTime - game.hintStartTime > 5.f)
 		{
 			game.isHintVisible = false;
 		}
@@ -131,7 +221,7 @@ namespace APPLE_GAME
 	{
 		if (currentTime - game.gameFinishTime <= PAUSE_LENGTH)
 		{
-			game.background.setFillColor(sf::Color::Red);
+			game.background.setFillColor(game.isGameWon ? sf::Color::Green : sf::Color::Red);
 		}
 		else
 		{
@@ -144,7 +234,7 @@ namespace APPLE_GAME
 		if (!game.isGameFinished)
 		{
 			UpdatePlayingState(game, deltaTime, currentTime);
-			game.scoreText.setString(L"Счет: " + std::to_wstring(game.numEatenApples));
+			game.scoreText.setString(L"РЎС‡РµС‚: " + std::to_wstring(game.numEatenApples));
 		}
 		else
 		{
@@ -155,10 +245,20 @@ namespace APPLE_GAME
 	void DrawGame(Game& game, sf::RenderWindow& window)
 	{
 		window.draw(game.background);
-		DrawPlayer(game.player, window);
-		for (int i = 0; i < NUM_APPLES; ++i)
+
+		if (game.isSelectingMode)
 		{
-			DrawApple(game.apples[i], window);
+			window.draw(game.modeSelectText);
+			return;
+		}
+
+		DrawPlayer(game.player, window);
+		for (int i = 0; i < game.numApples; ++i)
+		{
+			if (!game.apples[i].isEaten)
+			{
+				DrawApple(game.apples[i], window);
+			}
 		}
 
 		for (int i = 0; i < NUM_ROCKS; ++i)
@@ -174,12 +274,13 @@ namespace APPLE_GAME
 
 		if (game.isGameFinished)
 		{
-			window.draw(game.gameOverText);
+			window.draw(game.isGameWon ? game.gameWonText : game.gameOverText);
 		}
 	}
 
 	void DeinitGame(Game& game)
 	{
-
+		delete[] game.apples;
+		game.apples = nullptr;
 	}
 }

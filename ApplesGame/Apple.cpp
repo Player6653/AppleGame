@@ -7,7 +7,6 @@ namespace APPLE_GAME
 	{
 		apple.Position = GetRandomPositionInScreen(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-		// Инициализация спрайта
 		apple.sprite.setTexture(game.appletexture);
 		SetSpriteSize(apple.sprite, APPLE_SIZE, APPLE_SIZE);
 		SetSpriteRelativeOrigine(apple.sprite, 0.5f, 0.5f);

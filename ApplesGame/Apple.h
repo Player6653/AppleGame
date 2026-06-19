@@ -9,6 +9,7 @@ namespace APPLE_GAME
 	{
 		Position2D Position;
 		sf::Sprite sprite;
+		bool isEaten = false;
 	};
 
 	struct Game;
