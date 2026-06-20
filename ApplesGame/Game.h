@@ -1,6 +1,9 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
+#include <unordered_map>
+#include <vector>
+#include <string>
 #include "Math.h"
 #include "Constants.h"
 #include "Apple.h"
@@ -9,10 +12,16 @@
 
 namespace APPLE_GAME
 {
+	struct Record
+	{
+		std::wstring name;
+		int score;
+	};
+
 	struct Game
 	{
 		Player player;
-		Apple* apples = nullptr;
+		std::vector<Apple> apples;
 		int numApples = 0;
 		unsigned int gameMode = 0;
 		Rock rocks[NUM_ROCKS];
@@ -21,6 +30,7 @@ namespace APPLE_GAME
 		bool isGameFinished = false;
 		bool isGameWon = false;
 		bool isSelectingMode = true;
+		bool isShowingLeaderboard = false;
 		float gameFinishTime = 0.f;
 		float hintStartTime = 0.f;
 		sf::RectangleShape background;
@@ -40,8 +50,15 @@ namespace APPLE_GAME
 		sf::Text gameOverText;
 		sf::Text gameWonText;
 		sf::Text modeSelectText;
+		sf::Text leaderboardText;
+
+		std::unordered_map<std::wstring, int> leaderboard;
 
 		bool isHintVisible = true;
+		bool isShowingExitDialog = false;
+
+		sf::RectangleShape exitDialogBackground;
+		sf::Text exitDialogText;
 	};
 
 	void RestartGame(Game& game);

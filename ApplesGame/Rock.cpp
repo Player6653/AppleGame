@@ -5,7 +5,7 @@ namespace APPLE_GAME
 {
 	void InitRocks(Rock& rock, const Game& game)
 	{
-		rock.Position = GetRandomPositionInScreen(SCREEN_WIDTH, SCREEN_HEIGHT);
+		rock.Position = GetRandomPositionInScreen(SCREEN_WIDTH, SCREEN_HEIGHT, ROCK_SIZE / 2.f, ROCK_SIZE / 2.f);
 
 		rock.sprite.setTexture(game.rocktexture);
 		SetSpriteSize(rock.sprite, ROCK_SIZE, ROCK_SIZE);

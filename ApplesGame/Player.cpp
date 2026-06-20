@@ -12,6 +12,7 @@ namespace APPLE_GAME
 		player.sprite.setTexture(game.playertexture);
 		SetSpriteSize(player.sprite, PLAYER_SIZE, PLAYER_SIZE);
 		SetSpriteRelativeOrigine(player.sprite, 0.5f, 0.5f);
+		player.sprite.setRotation(0.f);
 	}
 
 	void DrawPlayer(Player& player, sf::RenderWindow& window)
@@ -26,7 +27,6 @@ namespace APPLE_GAME
 		float scaleX = (float)fabs(scale.x);
 		float scaleY = (float)fabs(scale.y);
 
-		// Обработка нажатий
 		switch (player.Direction)
 		{
 		case PlayerDirection::Right:

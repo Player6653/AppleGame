@@ -5,7 +5,7 @@ namespace APPLE_GAME
 {
 	void InitApples(Apple& apple, const Game& game)
 	{
-		apple.Position = GetRandomPositionInScreen(SCREEN_WIDTH, SCREEN_HEIGHT);
+		apple.Position = GetRandomPositionInScreen(SCREEN_WIDTH, SCREEN_HEIGHT, APPLE_SIZE / 2.f, APPLE_SIZE / 2.f);
 
 		apple.sprite.setTexture(game.appletexture);
 		SetSpriteSize(apple.sprite, APPLE_SIZE, APPLE_SIZE);

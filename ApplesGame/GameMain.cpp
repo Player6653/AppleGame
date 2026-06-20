@@ -34,7 +34,7 @@ int main()
 		float deltaTime = currentTime - lastTime;
 		lastTime = currentTime;
 
-		// Ивент закрытия
+		// Обработка событий
 		sf::Event event;
 		while (window.pollEvent(event))
 		{
@@ -43,10 +43,29 @@ int main()
 				window.close();
 				break;
 			}
-			if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
+
+			if (event.type == sf::Event::KeyPressed)
 			{
-				window.close();
-				break;
+				// Диалог выхода имеет приоритет над всеми
+				if (game.isShowingExitDialog)
+				{
+					if (event.key.code == sf::Keyboard::Y || event.key.code == sf::Keyboard::Return)
+					{
+						window.close();
+						break;
+					}
+					else if (event.key.code == sf::Keyboard::N || event.key.code == sf::Keyboard::Escape)
+					{
+						game.isShowingExitDialog = false;
+					}
+					continue;
+				}
+
+				if (event.key.code == sf::Keyboard::Escape)
+				{
+					game.isShowingExitDialog = true;
+					continue;
+				}
 			}
 
 			if (game.isSelectingMode)
@@ -64,8 +83,17 @@ int main()
 			{
 				if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R)
 				{
-					game.isGameFinished = true;
-					game.gameFinishTime = currentTime;
+					if (game.isShowingLeaderboard)
+					{
+						game.isShowingLeaderboard = false;
+						game.isGameFinished = false;
+						RestartGame(game);
+					}
+					else
+					{
+						game.isGameFinished = true;
+						game.gameFinishTime = currentTime;
+					}
 				}
 				if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P)
 				{
@@ -74,7 +102,7 @@ int main()
 			}
 		}
 
-		if (!game.isSelectingMode && !game.isGameFinished)
+		if (!game.isSelectingMode && !game.isGameFinished && !game.isShowingExitDialog)
 		{
 			// Обработка нажатий
 			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D))
@@ -95,7 +123,7 @@ int main()
 			}
 		}
 
-		if (!game.isSelectingMode)
+		if (!game.isSelectingMode && (!game.isShowingExitDialog || game.isGameFinished))
 		{
 			UpdateGame(game, deltaTime, currentTime);
 		}

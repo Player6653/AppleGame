@@ -4,11 +4,11 @@
 
 namespace APPLE_GAME
 {
-	Position2D GetRandomPositionInScreen(float screen_width, float screen_height)
+	Position2D GetRandomPositionInScreen(float screen_width, float screen_height, float marginX, float marginY)
 	{
 		Position2D result;
-		result.x = rand() / (float)RAND_MAX * screen_width;
-		result.y = rand() / (float)RAND_MAX * screen_height;
+		result.x = marginX + rand() / ((float)RAND_MAX + 1.f) * (screen_width - 2.f * marginX);
+		result.y = marginY + rand() / ((float)RAND_MAX + 1.f) * (screen_height - 2.f * marginY);
 		return result;
 	}
 

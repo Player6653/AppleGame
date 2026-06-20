@@ -1,9 +1,84 @@
 ﻿#include "Game.h"
-#include <cassert>
 #include <string>
+#include <vector>
+#include <utility>
 
 namespace APPLE_GAME
 {
+	static const std::wstring FAKE_NAMES[] = {
+		L"Алиса", L"Владислав", L"Глеб", L"Дарья", L"Ева",
+		L"Никита", L"Олег", L"Сандра", L"Федор", L"Ян"
+	};
+	static const int NUM_FAKE_NAMES = 10;
+
+	static void SortEntriesDescending(std::vector<std::pair<std::wstring, int>>& entries)
+	{
+		// Insertion sort по убыванию очков
+		for (int i = 1; i < (int)entries.size(); ++i)
+		{
+			auto key = entries[i];
+			int j = i - 1;
+			while (j >= 0 && entries[j].second < key.second)
+			{
+				entries[j + 1] = entries[j];
+				--j;
+			}
+			entries[j + 1] = key;
+		}
+	}
+
+	static void UpdateLeaderboardText(Game& game)
+	{
+		std::vector<std::pair<std::wstring, int>> entries;
+		for (auto& kv : game.leaderboard)
+			entries.push_back(kv);
+
+		SortEntriesDescending(entries);
+
+		const int NAME_COL = 16;
+		std::wstring text = L"===== Доска Почета =====\n";
+		for (int i = 0; i < (int)entries.size(); ++i)
+		{
+			const std::wstring& name = entries[i].first;
+			std::wstring line = std::to_wstring(i + 1) + L". " + name + L" ";
+			int dots = NAME_COL - (int)name.size() - 1;
+			if (dots < 2) dots = 2;
+			for (int d = 0; d < dots; ++d) line += L".";
+			line += L" " + std::to_wstring(entries[i].second) + L"\n";
+			text += line;
+		}
+		text += L"========================\n";
+		text += L"\n[R] Перезапуск   [P] Выбор режима";
+
+		game.leaderboardText.setString(text);
+	}
+
+	static void InitLeaderboard(Game& game)
+	{
+		game.leaderboard.clear();
+
+		std::wstring shuffled[NUM_FAKE_NAMES];
+		for (int i = 0; i < NUM_FAKE_NAMES; ++i)
+			shuffled[i] = FAKE_NAMES[i];
+		for (int i = NUM_FAKE_NAMES - 1; i > 0; --i)
+		{
+			int j = rand() % (i + 1);
+			std::wstring tmp = shuffled[i];
+			shuffled[i] = shuffled[j];
+			shuffled[j] = tmp;
+		}
+
+		int count = 6 + rand() % 3;
+		int scoreRange = (game.gameMode & GAME_MODE_INFINITE_APPLES)
+			? game.numApples * 3 + 15
+			: game.numApples;
+		for (int i = 0; i < count; ++i)
+			game.leaderboard[shuffled[i]] = rand() % scoreRange;
+
+		game.leaderboard[L"Игрок"] = 0;
+		UpdateLeaderboardText(game);
+	}
+
 	static void RebuildModeSelectText(Game& game)
 	{
 		std::wstring text = L"=== ВЫБОР РЕЖИМА ===\n\n";
@@ -30,7 +105,11 @@ namespace APPLE_GAME
 
 		for (int i = 0; i < NUM_ROCKS; ++i)
 		{
-			InitRocks(game.rocks[i], game);
+			do
+			{
+				InitRocks(game.rocks[i], game);
+			} while (IsRectanglesCoolide(game.player.Position, { PLAYER_SIZE, PLAYER_SIZE },
+				game.rocks[i].Position, { ROCK_SIZE, ROCK_SIZE }));
 		}
 
 		game.numEatenApples = 0;
@@ -43,19 +122,31 @@ namespace APPLE_GAME
 
 	void InitGame(Game& game)
 	{
-		assert(game.playertexture.loadFromFile(RESOURCES_PATH + "Pictures/Player.png"));
-		assert(game.appletexture.loadFromFile(RESOURCES_PATH + "Pictures/Apple.png"));
-		assert(game.rocktexture.loadFromFile(RESOURCES_PATH + "Pictures/Rock.png"));
+		if (!game.playertexture.loadFromFile(RESOURCES_PATH + "Pictures/Player.png") ||
+			!game.appletexture.loadFromFile(RESOURCES_PATH + "Pictures/Apple.png") ||
+			!game.rocktexture.loadFromFile(RESOURCES_PATH + "Pictures/Rock.png"))
+		{
+			std::cout << "Ошибка загрузки текстур!\n";
+			exit(1);
+		}
 
-		game.apples = new Apple[game.numApples];
+		game.apples.resize(game.numApples);
 
-		assert(game.eatAppleSoundBuffer.loadFromFile(RESOURCES_PATH + "Sound/AppleEat.wav"));
-		assert(game.deathSoundBuffer.loadFromFile(RESOURCES_PATH + "Sound/Death.wav"));
+		if (!game.eatAppleSoundBuffer.loadFromFile(RESOURCES_PATH + "Sound/AppleEat.wav") ||
+			!game.deathSoundBuffer.loadFromFile(RESOURCES_PATH + "Sound/Death.wav"))
+		{
+			std::cout << "Ошибка загрузки звуков!\n";
+			exit(1);
+		}
 
 		game.eatAppleSound.setBuffer(game.eatAppleSoundBuffer);
 		game.deathSound.setBuffer(game.deathSoundBuffer);
 
-		assert(game.font.loadFromFile(RESOURCES_PATH + "Fonts/Roboto-Black.ttf"));
+		if (!game.font.loadFromFile(RESOURCES_PATH + "Fonts/Roboto-Black.ttf"))
+		{
+			std::cout << "Ошибка загрузки шрифта!\n";
+			exit(1);
+		}
 
 		game.scoreText.setFont(game.font);
 		game.scoreText.setCharacterSize(24);
@@ -94,20 +185,37 @@ namespace APPLE_GAME
 		game.modeSelectText.setPosition(40.f, 140.f);
 		RebuildModeSelectText(game);
 
+		game.leaderboardText.setFont(game.font);
+		game.leaderboardText.setCharacterSize(28);
+		game.leaderboardText.setFillColor(sf::Color::White);
+		game.leaderboardText.setPosition(SCREEN_WIDTH / 2.f - 280.f, SCREEN_HEIGHT / 2.f - 240.f);
+
 		game.background.setSize(sf::Vector2f(SCREEN_WIDTH, SCREEN_HEIGHT));
 		game.background.setFillColor(sf::Color::Black);
 		game.background.setPosition(0.f, 0.f);
+
+		game.exitDialogBackground.setSize(sf::Vector2f(420.f, 160.f));
+		game.exitDialogBackground.setFillColor(sf::Color(30, 30, 30, 230));
+		game.exitDialogBackground.setOutlineColor(sf::Color::White);
+		game.exitDialogBackground.setOutlineThickness(2.f);
+		game.exitDialogBackground.setPosition(SCREEN_WIDTH / 2.f - 210.f, SCREEN_HEIGHT / 2.f - 80.f);
+
+		game.exitDialogText.setFont(game.font);
+		game.exitDialogText.setCharacterSize(24);
+		game.exitDialogText.setFillColor(sf::Color::White);
+		game.exitDialogText.setString(L"Хотите выйти?\n\n[Y/Enter] Да       [N/Esc] Нет");
+		game.exitDialogText.setPosition(SCREEN_WIDTH / 2.f - 190.f, SCREEN_HEIGHT / 2.f - 65.f);
 
 		RestartGame(game);
 	}
 
 	void StartGame(Game& game, float currentTime)
 	{
-		delete[] game.apples;
-		game.apples = new Apple[game.numApples];
+		game.apples.resize(game.numApples);
 		game.isSelectingMode = false;
 		game.hintStartTime = currentTime;
 		game.isHintVisible = true;
+		InitLeaderboard(game);
 		RestartGame(game);
 	}
 
@@ -116,6 +224,8 @@ namespace APPLE_GAME
 		game.isSelectingMode = true;
 		game.isGameFinished = false;
 		game.isGameWon = false;
+		game.isShowingLeaderboard = false;
+		game.isShowingExitDialog = false;
 		game.background.setFillColor(sf::Color::Black);
 	}
 
@@ -223,9 +333,12 @@ namespace APPLE_GAME
 		{
 			game.background.setFillColor(game.isGameWon ? sf::Color::Green : sf::Color::Red);
 		}
-		else
+		else if (!game.isShowingLeaderboard)
 		{
-			RestartGame(game);
+			game.leaderboard[L"Игрок"] = game.numEatenApples;
+			UpdateLeaderboardText(game);
+			game.background.setFillColor(sf::Color::Black);
+			game.isShowingLeaderboard = true;
 		}
 	}
 
@@ -249,38 +362,47 @@ namespace APPLE_GAME
 		if (game.isSelectingMode)
 		{
 			window.draw(game.modeSelectText);
-			return;
 		}
-
-		DrawPlayer(game.player, window);
-		for (int i = 0; i < game.numApples; ++i)
+		else if (game.isShowingLeaderboard)
 		{
-			if (!game.apples[i].isEaten)
+			window.draw(game.leaderboardText);
+		}
+		else
+		{
+			DrawPlayer(game.player, window);
+			for (int i = 0; i < game.numApples; ++i)
 			{
-				DrawApple(game.apples[i], window);
+				if (!game.apples[i].isEaten)
+				{
+					DrawApple(game.apples[i], window);
+				}
+			}
+
+			for (int i = 0; i < NUM_ROCKS; ++i)
+			{
+				DrawRock(game.rocks[i], window);
+			}
+
+			window.draw(game.scoreText);
+			if (game.isHintVisible)
+			{
+				window.draw(game.hintText);
+			}
+
+			if (game.isGameFinished)
+			{
+				window.draw(game.isGameWon ? game.gameWonText : game.gameOverText);
 			}
 		}
 
-		for (int i = 0; i < NUM_ROCKS; ++i)
+		if (game.isShowingExitDialog)
 		{
-			DrawRock(game.rocks[i], window);
-		}
-
-		window.draw(game.scoreText);
-		if (game.isHintVisible)
-		{
-			window.draw(game.hintText);
-		}
-
-		if (game.isGameFinished)
-		{
-			window.draw(game.isGameWon ? game.gameWonText : game.gameOverText);
+			window.draw(game.exitDialogBackground);
+			window.draw(game.exitDialogText);
 		}
 	}
 
 	void DeinitGame(Game& game)
 	{
-		delete[] game.apples;
-		game.apples = nullptr;
 	}
 }
