@@ -8,6 +8,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SFML", "SFML\SFML.vcxproj",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ApplesGame", "ApplesGame\ApplesGame.vcxproj", "{5D0F0290-0CB2-4F97-9E21-DF23DAD0AE01}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tetris", "Tetris\Tetris.vcxproj", "{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -40,6 +42,14 @@ Global
 		{5D0F0290-0CB2-4F97-9E21-DF23DAD0AE01}.Release|x64.Build.0 = Release|x64
 		{5D0F0290-0CB2-4F97-9E21-DF23DAD0AE01}.Release|x86.ActiveCfg = Release|Win32
 		{5D0F0290-0CB2-4F97-9E21-DF23DAD0AE01}.Release|x86.Build.0 = Release|Win32
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Debug|x64.ActiveCfg = Debug|x64
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Debug|x64.Build.0 = Debug|x64
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Debug|x86.ActiveCfg = Debug|Win32
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Debug|x86.Build.0 = Debug|Win32
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Release|x64.ActiveCfg = Release|x64
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Release|x64.Build.0 = Release|x64
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Release|x86.ActiveCfg = Release|Win32
+		{63369F70-1CA4-42CA-8BD2-42A84D3CB76E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
