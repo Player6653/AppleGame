@@ -48,7 +48,7 @@ namespace APPLE_GAME
 			text += line;
 		}
 		text += L"========================\n";
-		text += L"\n[R] Перезапуск   [P] Выбор режима";
+		text += L"\n[R] Перезапуск   [P] / [Backspace] Меню";
 
 		game.leaderboardText.setString(text);
 	}
@@ -88,7 +88,10 @@ namespace APPLE_GAME
 		text += (game.gameMode & GAME_MODE_WITH_ACCELERATION) ? L"ВКЛ" : L"ВЫКЛ";
 		text += L"\n[вверх / вниз]  Количество яблок: ";
 		text += std::to_wstring(game.numApples);
-		text += L"\n\n[Enter]  Начать игру";
+		text += L"\n\n";
+		text += (game.modeSelectCursor == 0) ? L"► Начать игру\n" : L"  Начать игру\n";
+		text += (game.modeSelectCursor == 1) ? L"► Таблица рекордов\n" : L"  Таблица рекордов\n";
+		text += L"\n[Tab] выбор пункта   [Enter] подтвердить";
 		game.modeSelectText.setString(text);
 	}
 
@@ -113,8 +116,6 @@ namespace APPLE_GAME
 		}
 
 		game.numEatenApples = 0;
-		game.isGameFinished = false;
-		game.isGameWon = false;
 		game.gameFinishTime = 0.f;
 
 		game.background.setFillColor(sf::Color::Black);
@@ -206,13 +207,39 @@ namespace APPLE_GAME
 		game.exitDialogText.setString(L"Хотите выйти?\n\n[Y/Enter] Да       [N/Esc] Нет");
 		game.exitDialogText.setPosition(SCREEN_WIDTH / 2.f - 190.f, SCREEN_HEIGHT / 2.f - 65.f);
 
+		game.pauseMenuBackground.setSize(sf::Vector2f(360.f, 150.f));
+		game.pauseMenuBackground.setFillColor(sf::Color(0, 0, 0, 210));
+		game.pauseMenuBackground.setOutlineColor(sf::Color::White);
+		game.pauseMenuBackground.setOutlineThickness(2.f);
+		game.pauseMenuBackground.setPosition(SCREEN_WIDTH / 2.f - 180.f, SCREEN_HEIGHT / 2.f - 75.f);
+
+		game.pauseMenuContinueText.setFont(game.font);
+		game.pauseMenuContinueText.setCharacterSize(36);
+		game.pauseMenuContinueText.setOutlineColor(sf::Color::Black);
+		game.pauseMenuContinueText.setString(L"Продолжить игру");
+		{
+			sf::FloatRect r = game.pauseMenuContinueText.getLocalBounds();
+			game.pauseMenuContinueText.setOrigin(r.left + r.width / 2.f, r.top + r.height / 2.f);
+		}
+		game.pauseMenuContinueText.setPosition(SCREEN_WIDTH / 2.f, SCREEN_HEIGHT / 2.f - 28.f);
+
+		game.pauseMenuExitText.setFont(game.font);
+		game.pauseMenuExitText.setCharacterSize(36);
+		game.pauseMenuExitText.setOutlineColor(sf::Color::Black);
+		game.pauseMenuExitText.setString(L"Выйти в меню");
+		{
+			sf::FloatRect r = game.pauseMenuExitText.getLocalBounds();
+			game.pauseMenuExitText.setOrigin(r.left + r.width / 2.f, r.top + r.height / 2.f);
+		}
+		game.pauseMenuExitText.setPosition(SCREEN_WIDTH / 2.f, SCREEN_HEIGHT / 2.f + 38.f);
+
 		RestartGame(game);
 	}
 
 	void StartGame(Game& game, float currentTime)
 	{
 		game.apples.resize(game.numApples);
-		game.isSelectingMode = false;
+		game.state = GameState::Playing;
 		game.hintStartTime = currentTime;
 		game.isHintVisible = true;
 		InitLeaderboard(game);
@@ -221,15 +248,31 @@ namespace APPLE_GAME
 
 	void ReturnToModeSelect(Game& game)
 	{
-		game.isSelectingMode = true;
-		game.isGameFinished = false;
-		game.isGameWon = false;
-		game.isShowingLeaderboard = false;
+		if (game.state == GameState::GameOver || game.state == GameState::GameWon)
+		{
+			game.leaderboard[L"Игрок"] = game.numEatenApples;
+			UpdateLeaderboardText(game);
+		}
+		game.state = GameState::ModeSelect;
+		game.modeSelectCursor = 0;
 		game.isShowingExitDialog = false;
 		game.background.setFillColor(sf::Color::Black);
 	}
 
-	bool HandleModeSelectInput(Game& game, sf::Keyboard::Key key)
+	void ShowLeaderboardFromMenu(Game& game)
+	{
+		if (game.leaderboard.empty())
+			InitLeaderboard(game);
+		game.state = GameState::Leaderboard;
+	}
+
+	void EnterPauseMenu(Game& game)
+	{
+		game.pauseMenuCursor = 0;
+		game.state = GameState::PauseMenu;
+	}
+
+	MenuAction HandleModeSelectInput(Game& game, sf::Keyboard::Key key)
 	{
 		switch (key)
 		{
@@ -249,10 +292,14 @@ namespace APPLE_GAME
 			if (game.numApples > 5) game.numApples -= 5;
 			RebuildModeSelectText(game);
 			break;
+		case sf::Keyboard::Tab:
+			game.modeSelectCursor = 1 - game.modeSelectCursor;
+			RebuildModeSelectText(game);
+			break;
 		case sf::Keyboard::Return:
-			return true;
+			return (game.modeSelectCursor == 0) ? MenuAction::StartGame : MenuAction::ShowLeaderboard;
 		}
-		return false;
+		return MenuAction::None;
 	}
 
 	bool CheckCollisionApple(const Player& player, const Apple& apple)
@@ -301,23 +348,22 @@ namespace APPLE_GAME
 			if (CheckCollisionRock(game.player, game.rocks[i]))
 			{
 				game.deathSound.play();
-				game.isGameFinished = true;
+				game.state = GameState::GameOver;
 				game.gameFinishTime = currentTime;
 				break;
 			}
 		}
 
-		if (!game.isGameFinished && CheckPlayerScreenCollision(game.player))
+		if (game.state == GameState::Playing && CheckPlayerScreenCollision(game.player))
 		{
 			game.deathSound.play();
-			game.isGameFinished = true;
+			game.state = GameState::GameOver;
 			game.gameFinishTime = currentTime;
 		}
 
-		if (!game.isGameFinished && !(game.gameMode & GAME_MODE_INFINITE_APPLES) && game.numEatenApples >= game.numApples)
+		if (game.state == GameState::Playing && !(game.gameMode & GAME_MODE_INFINITE_APPLES) && game.numEatenApples >= game.numApples)
 		{
-			game.isGameFinished = true;
-			game.isGameWon = true;
+			game.state = GameState::GameWon;
 			game.gameFinishTime = currentTime;
 		}
 
@@ -331,25 +377,25 @@ namespace APPLE_GAME
 	{
 		if (currentTime - game.gameFinishTime <= PAUSE_LENGTH)
 		{
-			game.background.setFillColor(game.isGameWon ? sf::Color::Green : sf::Color::Red);
+			game.background.setFillColor(game.state == GameState::GameWon ? sf::Color::Green : sf::Color::Red);
 		}
-		else if (!game.isShowingLeaderboard)
+		else
 		{
 			game.leaderboard[L"Игрок"] = game.numEatenApples;
 			UpdateLeaderboardText(game);
 			game.background.setFillColor(sf::Color::Black);
-			game.isShowingLeaderboard = true;
+			game.state = GameState::Leaderboard;
 		}
 	}
 
 	void UpdateGame(Game& game, float deltaTime, float currentTime)
 	{
-		if (!game.isGameFinished)
+		if (game.state == GameState::Playing)
 		{
 			UpdatePlayingState(game, deltaTime, currentTime);
 			game.scoreText.setString(L"Счет: " + std::to_wstring(game.numEatenApples));
 		}
-		else
+		else if (game.state == GameState::GameOver || game.state == GameState::GameWon)
 		{
 			UpdateGameOverState(game, currentTime);
 		}
@@ -359,11 +405,11 @@ namespace APPLE_GAME
 	{
 		window.draw(game.background);
 
-		if (game.isSelectingMode)
+		if (game.state == GameState::ModeSelect)
 		{
 			window.draw(game.modeSelectText);
 		}
-		else if (game.isShowingLeaderboard)
+		else if (game.state == GameState::Leaderboard)
 		{
 			window.draw(game.leaderboardText);
 		}
@@ -384,15 +430,26 @@ namespace APPLE_GAME
 			}
 
 			window.draw(game.scoreText);
-			if (game.isHintVisible)
+			if (game.isHintVisible && game.state == GameState::Playing)
 			{
 				window.draw(game.hintText);
 			}
 
-			if (game.isGameFinished)
+			if (game.state == GameState::GameOver || game.state == GameState::GameWon)
 			{
-				window.draw(game.isGameWon ? game.gameWonText : game.gameOverText);
+				window.draw(game.state == GameState::GameWon ? game.gameWonText : game.gameOverText);
 			}
+		}
+
+		if (game.state == GameState::PauseMenu)
+		{
+			game.pauseMenuContinueText.setFillColor(game.pauseMenuCursor == 0 ? sf::Color::Yellow : sf::Color::White);
+			game.pauseMenuContinueText.setOutlineThickness(game.pauseMenuCursor == 0 ? 2.f : 0.f);
+			game.pauseMenuExitText.setFillColor(game.pauseMenuCursor == 1 ? sf::Color::Yellow : sf::Color::White);
+			game.pauseMenuExitText.setOutlineThickness(game.pauseMenuCursor == 1 ? 2.f : 0.f);
+			window.draw(game.pauseMenuBackground);
+			window.draw(game.pauseMenuContinueText);
+			window.draw(game.pauseMenuExitText);
 		}
 
 		if (game.isShowingExitDialog)

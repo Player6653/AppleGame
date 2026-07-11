@@ -12,6 +12,23 @@
 
 namespace APPLE_GAME
 {
+	enum class GameState
+	{
+		ModeSelect,
+		Playing,
+		GameOver,
+		GameWon,
+		Leaderboard,
+		PauseMenu
+	};
+
+	enum class MenuAction
+	{
+		None,
+		StartGame,
+		ShowLeaderboard
+	};
+
 	struct Record
 	{
 		std::wstring name;
@@ -27,12 +44,12 @@ namespace APPLE_GAME
 		Rock rocks[NUM_ROCKS];
 
 		int numEatenApples = 0;
-		bool isGameFinished = false;
-		bool isGameWon = false;
-		bool isSelectingMode = true;
-		bool isShowingLeaderboard = false;
+		GameState state = GameState::ModeSelect;
+		int modeSelectCursor = 0;
+		int pauseMenuCursor = 0;
 		float gameFinishTime = 0.f;
 		float hintStartTime = 0.f;
+		float pauseEnteredTime = 0.f;
 		sf::RectangleShape background;
 
 		sf::Texture playertexture;
@@ -59,13 +76,19 @@ namespace APPLE_GAME
 
 		sf::RectangleShape exitDialogBackground;
 		sf::Text exitDialogText;
+
+		sf::RectangleShape pauseMenuBackground;
+		sf::Text pauseMenuContinueText;
+		sf::Text pauseMenuExitText;
 	};
 
 	void RestartGame(Game& game);
 	void InitGame(Game& game);
 	void StartGame(Game& game, float currentTime);
 	void ReturnToModeSelect(Game& game);
-	bool HandleModeSelectInput(Game& game, sf::Keyboard::Key key);
+	void ShowLeaderboardFromMenu(Game& game);
+	void EnterPauseMenu(Game& game);
+	MenuAction HandleModeSelectInput(Game& game, sf::Keyboard::Key key);
 	bool CheckCollisionApple(const Player& player, const Apple& apple);
 	bool CheckCollisionRock(const Player& player, const Rock& rock);
 	bool CheckPlayerScreenCollision(const Player& player);
